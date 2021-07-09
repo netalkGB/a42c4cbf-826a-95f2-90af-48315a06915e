@@ -30,16 +30,17 @@ if len(sys.argv) >= 2 and sys.argv[1] == 'get' and sys.argv[2] == 'devices':
 
 sd.default.samplerate = REC_SAMPLE_RATE
 sd.default.channels = REC_CHANNELS
-sd.default.device = [REC_AUDIO_DEVICE_IDX, PLAYBACK_AUDIO_DEVICE_IDX] #input:output
+sd.default.device = [REC_AUDIO_DEVICE_IDX,
+                     PLAYBACK_AUDIO_DEVICE_IDX]  # input:output
 print(sound_devices[REC_AUDIO_DEVICE_IDX])
 print(ports[MIDI_DEVICE_IDX])
 # チャンネルマッピング
 input_selector = [INPUT_CHANNEL_LEFT, INPUT_CHANNEL_RIGHT]
 # out 1・2を指定(聴かないので指定する意味はない)
 output_selector = [OUTPUT_CHANNEL_LEFT, OUTPUT_CHANNEL_RIGHT]
-asio_in = sd.AsioSettings(channel_selectors = input_selector)
-asio_out = sd.AsioSettings(channel_selectors = output_selector)
-sd.default.extra_settings = (asio_in,asio_out)
+asio_in = sd.AsioSettings(channel_selectors=input_selector)
+asio_out = sd.AsioSettings(channel_selectors=output_selector)
+sd.default.extra_settings = (asio_in, asio_out)
 
 with open(PLAYLIST_PATH) as f:
     playlist = f.read().splitlines()
@@ -64,7 +65,7 @@ for midi_file_name in playlist:
             outport.send(mido.Message('note_off', channel=ch))
         # GS Reset（リバーブ対策）
         sysex_gs_reset = [0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41]
-        outport.send(mido.Message('sysex', data=sysex_gs_reset))    
+        outport.send(mido.Message('sysex', data=sysex_gs_reset))
 
     wave_filename = "record" + os.sep + os.path.basename(midi_abspath) + ".wav"
     # 正規化
@@ -74,9 +75,7 @@ for midi_file_name in playlist:
     # ファイル保存
     with wave.open(wave_filename, mode='wb') as wb:
         wb.setnchannels(REC_CHANNELS)  # ステレオ
-        quantifying_byte_number = 2 # 16bit
+        quantifying_byte_number = 2  # 16bit
         wb.setsampwidth(quantifying_byte_number)  # 2byte(16bit)
         wb.setframerate(REC_SAMPLE_RATE)
         wb.writeframes(data.tobytes())  # バイト配列に変換
-
-
