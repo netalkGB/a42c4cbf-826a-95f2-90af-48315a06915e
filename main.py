@@ -8,6 +8,7 @@ import numpy as np
 import sys
 
 PLAYER_PATH = "C:\\Program Files (x86)\\TMIDI Player\\TMIDI.EXE"
+PLAYLIST_PATH = "playlist.txt"
 REC_AUDIO_DEVICE_IDX = 16
 PLAYBACK_AUDIO_DEVICE_IDX = 16
 MIDI_DEVICE_IDX = 2
@@ -17,16 +18,10 @@ INPUT_CHANNEL_LEFT = 2
 INPUT_CHANNEL_RIGHT = 3
 OUTPUT_CHANNEL_LEFT = 0
 OUTPUT_CHANNEL_RIGHT = 1
-
-MIDI_FILENAME = "MIRROR.mid"
-
 PADDING_REC_TIME = 2
-
-midi_abspath = os.path.abspath(MIDI_FILENAME)
 
 ports = mido.get_output_names()
 sound_devices = sd.query_devices()
-
 
 if len(sys.argv) >= 2 and sys.argv[1] == 'get' and sys.argv[2] == 'devices':
     print(str(ports))
@@ -46,37 +41,42 @@ asio_in = sd.AsioSettings(channel_selectors = input_selector)
 asio_out = sd.AsioSettings(channel_selectors = output_selector)
 sd.default.extra_settings = (asio_in,asio_out)
 
-midi_data = pretty_midi.PrettyMIDI(midi_abspath)
+with open(PLAYLIST_PATH) as f:
+    playlist = f.read().splitlines()
 
-duration_seconds = midi_data.get_end_time()
+for midi_file_name in playlist:
+    midi_abspath = os.path.abspath(midi_file_name)
+    midi_data = pretty_midi.PrettyMIDI(midi_abspath)
 
-rec_time_seconds = duration_seconds + PADDING_REC_TIME
+    duration_seconds = midi_data.get_end_time()
 
-process = subprocess.Popen(PLAYER_PATH + ' ' + midi_abspath)
-recdata = sd.rec(int(rec_time_seconds * REC_SAMPLE_RATE))
-sd.wait()
-process.kill()
+    rec_time_seconds = duration_seconds + PADDING_REC_TIME
 
-# 鳴りっぱなしの音を止める
-with mido.open_output(ports[MIDI_DEVICE_IDX]) as outport:
-    # 念のため全チャンネルノートオフ
-    for ch in range(16):
-        outport.send(mido.Message('note_off', channel=ch))
-    # GS Reset（リバーブ対策）
-    sysex_gs_reset = [0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41]
-    outport.send(mido.Message('sysex', data=sysex_gs_reset))    
+    process = subprocess.Popen(PLAYER_PATH + ' ' + midi_abspath)
+    recdata = sd.rec(int(rec_time_seconds * REC_SAMPLE_RATE))
+    sd.wait()
+    process.kill()
 
-wave_filename = "record" + os.sep + os.path.basename(midi_abspath) + ".wav"
-# 正規化
-data = recdata / recdata.max() * np.iinfo(np.int16).max
-# float -> int
-data = data.astype(np.int16)
-# ファイル保存
-with wave.open(wave_filename, mode='wb') as wb:
-    wb.setnchannels(REC_CHANNELS)  # ステレオ
-    quantifying_byte_number = 2 # 16bit
-    wb.setsampwidth(quantifying_byte_number)  # 2byte(16bit)
-    wb.setframerate(REC_SAMPLE_RATE)
-    wb.writeframes(data.tobytes())  # バイト配列に変換
+    # 鳴りっぱなしの音を止める
+    with mido.open_output(ports[MIDI_DEVICE_IDX]) as outport:
+        # 念のため全チャンネルノートオフ
+        for ch in range(16):
+            outport.send(mido.Message('note_off', channel=ch))
+        # GS Reset（リバーブ対策）
+        sysex_gs_reset = [0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41]
+        outport.send(mido.Message('sysex', data=sysex_gs_reset))    
+
+    wave_filename = "record" + os.sep + os.path.basename(midi_abspath) + ".wav"
+    # 正規化
+    data = recdata / recdata.max() * np.iinfo(np.int16).max
+    # float -> int
+    data = data.astype(np.int16)
+    # ファイル保存
+    with wave.open(wave_filename, mode='wb') as wb:
+        wb.setnchannels(REC_CHANNELS)  # ステレオ
+        quantifying_byte_number = 2 # 16bit
+        wb.setsampwidth(quantifying_byte_number)  # 2byte(16bit)
+        wb.setframerate(REC_SAMPLE_RATE)
+        wb.writeframes(data.tobytes())  # バイト配列に変換
 
 
