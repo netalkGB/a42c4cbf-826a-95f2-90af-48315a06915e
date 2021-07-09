@@ -1,7 +1,5 @@
-from mido.messages.specs import CHANNEL_MESSAGES
 import pretty_midi
 import subprocess
-import time
 import mido
 import os
 import sounddevice as sd
@@ -20,23 +18,26 @@ INPUT_CHANNEL_RIGHT = 3
 OUTPUT_CHANNEL_LEFT = 0
 OUTPUT_CHANNEL_RIGHT = 1
 
-MIDI_FILENAME = 'MIRROR.mid'
+MIDI_FILENAME = "MIRROR.mid"
 
 PADDING_REC_TIME = 2
+
+midi_abspath = os.path.abspath(MIDI_FILENAME)
 
 ports = mido.get_output_names()
 sound_devices = sd.query_devices()
 
 
-if sys.argv[1] == 'get' and sys.argv[2] == 'devices':
+if len(sys.argv) >= 2 and sys.argv[1] == 'get' and sys.argv[2] == 'devices':
     print(str(ports))
     print(sound_devices)
     sys.exit()
 
 sd.default.samplerate = REC_SAMPLE_RATE
 sd.default.channels = REC_CHANNELS
-sd.default.device = [REC_AUDIO_DEVICE_IDX,PLAYBACK_AUDIO_DEVICE_IDX] #input:output
+sd.default.device = [REC_AUDIO_DEVICE_IDX, PLAYBACK_AUDIO_DEVICE_IDX] #input:output
 print(sound_devices[REC_AUDIO_DEVICE_IDX])
+print(ports[MIDI_DEVICE_IDX])
 # チャンネルマッピング
 input_selector = [INPUT_CHANNEL_LEFT, INPUT_CHANNEL_RIGHT]
 # out 1・2を指定(聴かないので指定する意味はない)
@@ -45,12 +46,13 @@ asio_in = sd.AsioSettings(channel_selectors = input_selector)
 asio_out = sd.AsioSettings(channel_selectors = output_selector)
 sd.default.extra_settings = (asio_in,asio_out)
 
-midi_data = pretty_midi.PrettyMIDI(MIDI_FILENAME)
+midi_data = pretty_midi.PrettyMIDI(midi_abspath)
 
 duration_seconds = midi_data.get_end_time()
 
 rec_time_seconds = duration_seconds + PADDING_REC_TIME
-process = subprocess.Popen(PLAYER_PATH + ' ' + os.path.abspath(MIDI_FILENAME))
+
+process = subprocess.Popen(PLAYER_PATH + ' ' + midi_abspath)
 recdata = sd.rec(int(rec_time_seconds * REC_SAMPLE_RATE))
 sd.wait()
 process.kill()
@@ -64,7 +66,7 @@ with mido.open_output(ports[MIDI_DEVICE_IDX]) as outport:
     sysex_gs_reset = [0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41]
     outport.send(mido.Message('sysex', data=sysex_gs_reset))    
 
-wave_filename = MIDI_FILENAME + ".wav"
+wave_filename = "record" + os.sep + os.path.basename(midi_abspath) + ".wav"
 # 正規化
 data = recdata / recdata.max() * np.iinfo(np.int16).max
 # float -> int
