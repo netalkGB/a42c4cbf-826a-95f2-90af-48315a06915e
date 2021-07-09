@@ -37,8 +37,8 @@ duration_seconds = midi_data.get_end_time()
 # duration_seconds = 10
 additional_seconds = 1
 duration = duration_seconds + additional_seconds
-recdata = sd.rec(int(duration * sd.default.samplerate))
 process = subprocess.Popen(PLAYER_PATH + ' ' + os.path.abspath("MIRROR.MID"))
+recdata = sd.rec(int(duration * sd.default.samplerate))
 sd.wait()
 process.kill()
 
