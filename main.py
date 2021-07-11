@@ -44,8 +44,10 @@ sd.default.extra_settings = (asio_in, asio_out)
 
 with open(PLAYLIST_PATH) as f:
     playlist = f.read().splitlines()
+file_count = len(playlist)
 
-for midi_file_name in playlist:
+for idx, midi_file_name in enumerate(playlist):
+    print(str(idx + 1) + '/' + str(file_count) + ' ' + midi_file_name)
     midi_abspath = os.path.abspath(midi_file_name)
     midi_data = pretty_midi.PrettyMIDI(midi_abspath)
 
